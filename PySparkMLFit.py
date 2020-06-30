@@ -12,35 +12,35 @@ LR_MODEL = 'lr_model'
 
 
 def process(spark, train_data, test_data):
-    #train_data - путь к файлу с данными для обучения модели
-    #test_data - путь к файлу с данными для оценки качества модели
+    #train_data - path to file to learn model
+    #test_data - path to file to estimate qualite of model
     train = spark.read.parquet(train_data)
     test = spark.read.parquet(test_data)
-    #делаем фича вектор
+    #create feature vector
     feature = VectorAssembler(inputCols=train_data.columns[1:-1],outputCol="rawfeatures")
     indexed_feature = VectorIndexer(inputCol="rawfeatures", outputCol="features", maxCategories=4)
-    #прописываем выбранную нами модель
+    #create our model
     dtr = DecisionTreeRegressor(labelCol="ctr", featuresCol="features")
-    #делаем структуру паплайна
+    #create pipeline structure
     pipeline_dtr = Pipeline(stages=[feature, indexed_feature, dtr])
-    #пишем варианты параметров для подбора наилучших
+    #create lists of parameters to choose the best combination
     paramGrid_dtr = ParamGridBuilder()\
                      .addGrid(dtr.maxDepth, [2, 5])\
                      .addGrid(dtr.maxBins, [80, 85, 90])\
                      .build()
-    #задаем наш оценщик
+    #create evaluator for model
     evaluator = RegressionEvaluator(metricName="rmse", labelCol="ctr", predictionCol="prediction")
-    #задаем валидацию с паплайном, оценщиком и набором возможных параметров
+    #create validation with our pipeline, evaluator and calculated parametrs
     tvs_dtr = TrainValidationSplit(estimator=pipeline_dtr, evaluator=evaluator, estimatorParamMaps=paramGrid_dtr,trainRatio=0.8)
-    #применяем tvs 
+    #apply validation
     dtr_model = tvs_dtr.fit(train)
-    #запоминаем лучшую модель
+    #the best model
     dtr_best_model = dtr_model.bestModel
-    #проверяем качество 
+    #check quality of model
     dtr_predictions = dtr_best_model.transform(test)
     rmse_dtr = evaluator.evaluate(dtr_predictions)
     print("RMSE on our dtr test set: %g" % rmse_dtr)
-    #сохраняем лучшую модель
+    #save the best model
     dtr_best_model.write().overwrite().save('dtr_best_model')
 
 
