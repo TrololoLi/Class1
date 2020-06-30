@@ -9,8 +9,8 @@ LR_MODEL = 'lr_model'
 
 
 def process(spark, input_file, output_file):
-    #input_file - путь к файлу с данными для которых нужно предсказать ctr
-    #output_file - путь по которому нужно сохранить файл с результатами [ads_id, prediction]
+    #input_file - path to file for ctr prediction
+    #output_file - path to file where to save prediction results [ads_id, prediction]
     model = PipelineModel.load('dtr_best_model')
     model.transform(input_file)\
             .select("ad_id","prediction")\
